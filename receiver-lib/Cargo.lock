@@ -3,12 +3,5 @@
 version = 4
 
 [[package]]
-name = "jugend-forscht-receiver"
-version = "0.1.0"
-dependencies = [
- "receiver-lib",
-]
-
-[[package]]
 name = "receiver-lib"
 version = "0.1.0"

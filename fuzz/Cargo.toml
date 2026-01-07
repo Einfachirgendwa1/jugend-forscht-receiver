@@ -1,0 +1,21 @@
+[package]
+name = "jugend-forscht-receiver-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.receiver-lib]
+path = "../receiver-lib"
+
+[[bin]]
+name = "read_next_package"
+path = "fuzz_targets/read_next_package.rs"
+test = false
+doc = false
+bench = false
