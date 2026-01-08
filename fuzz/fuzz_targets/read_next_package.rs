@@ -1,7 +1,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use receiver_lib::{DataReceiverExt, PackageV1, SpoofedData};
+use package_parser::{DataReceiverExt, PackageV1, SpoofedData};
 
 fuzz_target!(|data: &[u8]| {
     let mut spoofed = SpoofedData::from(data);

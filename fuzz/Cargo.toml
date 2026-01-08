@@ -10,8 +10,8 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 
-[dependencies.receiver-lib]
-path = "../receiver-lib"
+[dependencies.package-parser]
+path = "../package-parser"
 
 [[bin]]
 name = "read_next_package"
