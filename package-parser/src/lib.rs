@@ -41,7 +41,7 @@ pub struct PackageV1 {
     pub value: i32,
 }
 
-const MINIMUM_LENGTH: usize = MAGIC.len() + END.len() + 2 * size_of::<i32>();
+const MINIMUM_LENGTH: usize = MAGIC.len() + END.len() + 3 * size_of::<i32>();
 
 impl Package {
     pub fn try_from_buffer(data: &[u8]) -> Option<Self> {
