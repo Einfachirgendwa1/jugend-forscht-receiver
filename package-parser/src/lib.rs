@@ -101,7 +101,7 @@ impl PackageV1 {
             return None;
         }
 
-        if package.data_len as usize != size_of::<Self>() {
+        if package.data_len as usize != 3 * size_of::<i32>() {
             return None;
         }
 
