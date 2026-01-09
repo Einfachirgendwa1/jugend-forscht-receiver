@@ -3,7 +3,7 @@ mod tests;
 pub const MAGIC: [u8; 3] = [77, 87, 100];
 pub const END: [u8; 3] = [10, 10, 0];
 
-pub trait DataReceiver {
+pub trait DataReceiver: Send + Sync {
     fn get_next_byte(&mut self) -> Option<u8>;
 }
 
@@ -36,8 +36,9 @@ pub struct Package {
 
 #[derive(Debug)]
 pub struct PackageV1 {
-    timestamp: i32,
-    value: i32,
+    pub sensor: i32,
+    pub timestamp: i32,
+    pub value: i32,
 }
 
 const MINIMUM_LENGTH: usize = MAGIC.len() + END.len() + 2 * size_of::<i32>();
@@ -105,9 +106,14 @@ impl PackageV1 {
         }
 
         let timestamp = bytes::<i32, 4>(&package.data[..4], i32::from_le_bytes)?;
-        let value = bytes::<i32, 4>(&package.data[4..8], i32::from_le_bytes)?;
+        let sensor = bytes::<i32, 4>(&package.data[4..8], i32::from_le_bytes)?;
+        let value = bytes::<i32, 4>(&package.data[8..12], i32::from_le_bytes)?;
 
-        let res = Self { timestamp, value };
+        let res = Self {
+            timestamp,
+            sensor,
+            value,
+        };
         Some(res)
     }
 }

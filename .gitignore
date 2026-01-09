@@ -1,2 +1,5 @@
 /target
 /package-parser/target/
+*.db
+*.db-shm
+*.db-wal

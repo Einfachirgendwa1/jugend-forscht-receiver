@@ -1,5 +1,5 @@
 ﻿#[cfg(test)]
-mod tests {
+mod test_mod {
     use crate::{DataReceiverExt, PackageV1, SpoofedData, END, MAGIC};
 
     #[test]
@@ -9,18 +9,23 @@ mod tests {
             &394i32.to_le_bytes(),
             &MAGIC as &[u8],
             &1i32.to_le_bytes(),
-            &8i32.to_le_bytes(),
+            &12i32.to_le_bytes(),
             &42i32.to_le_bytes(),
+            &17i32.to_le_bytes(),
             &7i32.to_le_bytes(),
             &END,
             &394i32.to_le_bytes(),
             &3i32.to_le_bytes(),
         ]);
 
-        let package = spoofed.read_next_package().unwrap();
-        let package_v1 = PackageV1::try_from(package).unwrap();
+        let package = spoofed
+            .read_next_package()
+            .expect("Failed to parse package");
+
+        let package_v1 = PackageV1::try_from(package).expect("Failed to parse package v1");
 
         assert_eq!(package_v1.timestamp, 42);
+        assert_eq!(package_v1.sensor, 17);
         assert_eq!(package_v1.value, 7);
     }
 
