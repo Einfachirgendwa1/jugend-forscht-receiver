@@ -22,7 +22,7 @@ mod test_mod {
             .read_next_package()
             .expect("Failed to parse package");
 
-        let package_v1 = PackageV1::try_from(package).expect("Failed to parse package v1");
+        let package_v1 = PackageV1::try_from(package, false).expect("Failed to parse package v1");
 
         assert_eq!(package_v1.timestamp, 42);
         assert_eq!(package_v1.sensor, 17);

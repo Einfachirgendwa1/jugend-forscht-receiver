@@ -1,7 +1,7 @@
 ﻿use clap::Parser;
-use package_parser::{DataReceiver, Package, PackageV1};
+use package_parser::{DataReceiver, Package, PackageV1, SpoofedData};
 use rusqlite::Connection;
-use serialport::new;
+use serialport::{new, SerialPort};
 use std::collections::VecDeque;
 use std::io::ErrorKind::TimedOut;
 use std::io::Read;
@@ -40,7 +40,7 @@ fn main() {
 
     for receiver in get_receivers(cli) {
         let tx = tx.clone();
-        spawn(move || read_from_stream(receiver, tx));
+        spawn(move || read_from_stream(receiver, tx, true));
     }
 
     let mut statement = conn
@@ -48,7 +48,6 @@ fn main() {
         .expect("failed to prepare statement");
 
     for package in rx {
-        println!("package: {:?}", &package);
         statement
             .execute([package.sensor, package.timestamp, package.value])
             .expect("failed to execute statement");
@@ -58,27 +57,37 @@ fn main() {
 fn get_receivers(cli: Cli) -> Vec<Box<dyn DataReceiver>> {
     let mut vec = vec![];
 
-    if let (Some(port), Some(baud_rate)) = (cli.port, cli.baud_rate) {
+    if let (Some(port_name), Some(baud_rate)) = (cli.port, cli.baud_rate) {
+        let port = new(port_name, baud_rate)
+            .timeout(Duration::from_millis(100))
+            .open()
+            .expect("failed to open serial port");
+
         let wired_arduino = WiredArduino {
             port,
-            baud_rate,
             backlog: VecDeque::new(),
         };
 
         vec.push(Box::new(wired_arduino) as Box<dyn DataReceiver>);
     }
 
+    let spoofed = SpoofedData::from(&[
+        77u8, 87u8, 100u8, 1u8, 0u8, 0u8, 0u8, 12u8, 0u8, 0u8, 0u8, 18u8, 39u8, 0u8, 0u8, 42u8,
+        0u8, 0u8, 0u8, 184u8, 1u8, 0u8, 0u8, 10u8, 10u8, 0u8, 77u8, 87u8, 100u8, 1u8, 0u8, 0u8,
+        0u8, 12u8, 0u8, 0u8, 0u8, 250u8, 42u8, 0u8, 0u8, 42u8, 0u8, 0u8, 0u8, 165u8, 0u8, 0u8, 0u8,
+        10u8, 10u8, 0u8,
+    ] as &[u8]);
+    vec.push(Box::new(spoofed) as _);
+
     vec
 }
 
-fn read_from_stream(mut receiver: Box<dyn DataReceiver>, tx: Sender<PackageV1>) {
+fn read_from_stream(mut receiver: Box<dyn DataReceiver>, tx: Sender<PackageV1>, debug: bool) {
     let mut buffer = Vec::new();
     while let Some(next) = receiver.get_next_byte() {
         buffer.push(next);
-        if let Some(package) = Package::try_from_buffer(&buffer) {
-            println!("Got package");
-            if let Some(package_v1) = PackageV1::try_from(package) {
-                println!("Got package v1");
+        if let Some(package) = Package::try_from_buffer(&buffer, debug) {
+            if let Some(package_v1) = PackageV1::try_from(package, debug) {
                 tx.send(package_v1)
                     .expect("failed to send package via channel");
             }
@@ -87,21 +96,19 @@ fn read_from_stream(mut receiver: Box<dyn DataReceiver>, tx: Sender<PackageV1>) 
 }
 
 struct WiredArduino {
-    port: String,
-    baud_rate: u32,
+    port: Box<dyn SerialPort>,
     backlog: VecDeque<u8>,
 }
+
+unsafe impl Send for WiredArduino {}
+unsafe impl Sync for WiredArduino {}
+
 impl DataReceiver for WiredArduino {
     fn get_next_byte(&mut self) -> Option<u8> {
-        let mut port = new(self.port.clone(), self.baud_rate)
-            .timeout(Duration::from_secs(1))
-            .open()
-            .expect("failed to open serial port");
-
         loop {
             let mut buffer = [0u8; 1024];
 
-            match port.read(&mut buffer) {
+            match self.port.read(&mut buffer) {
                 Ok(n) if n > 0 => {
                     self.backlog = VecDeque::from(buffer[..n].to_vec());
                     break;

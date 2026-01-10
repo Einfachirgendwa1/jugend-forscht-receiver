@@ -1,5 +1,7 @@
 mod tests;
 
+const DEBUG: bool = true;
+
 pub const MAGIC: [u8; 3] = [77, 87, 100];
 pub const END: [u8; 3] = [10, 10, 0];
 
@@ -18,7 +20,7 @@ impl<T: DataReceiver> DataReceiverExt for T {
         while let Some(byte) = self.get_next_byte() {
             buffer.push(byte);
 
-            if let Some(package) = Package::try_from_buffer(&buffer) {
+            if let Some(package) = Package::try_from_buffer(&buffer, DEBUG) {
                 return Some(package);
             }
         }
@@ -44,8 +46,15 @@ pub struct PackageV1 {
 const MINIMUM_LENGTH: usize = MAGIC.len() + END.len() + 3 * size_of::<i32>();
 
 impl Package {
-    pub fn try_from_buffer(data: &[u8]) -> Option<Self> {
+    pub fn try_from_buffer(data: &[u8], debug: bool) -> Option<Self> {
         if data.len() < MINIMUM_LENGTH {
+            if debug {
+                println!(
+                    " < Package is too short ({} < {MINIMUM_LENGTH})",
+                    data.len()
+                );
+            }
+
             return None;
         }
 
@@ -54,15 +63,30 @@ impl Package {
             start_idx += 1;
 
             if start_idx >= data.len() {
+                if debug {
+                    println!(" < Package doesn't contain MAGIC")
+                }
+
                 return None;
             }
         }
 
         if !data.ends_with(&END) {
+            if debug {
+                println!(" < Package doesn't end with END")
+            }
+
             return None;
         }
 
         if data.len() - start_idx < MINIMUM_LENGTH {
+            if debug {
+                println!(
+                    " < Package is too short ({} < {MINIMUM_LENGTH})",
+                    data.len() - start_idx
+                );
+            }
+
             return None;
         }
 
@@ -78,6 +102,10 @@ impl Package {
 
         let data_idx = start_idx.checked_add(8)?;
         if data_idx.checked_add(data_len as usize)? != end_idx {
+            if debug {
+                println!(" < Package doesn't end with END")
+            }
+
             return None;
         }
 
@@ -91,17 +119,30 @@ impl Package {
 
         assert_eq!(res.data_len as usize, res.data.len());
 
+        println!(" > {res:?}");
+
         Some(res)
     }
 }
 
 impl PackageV1 {
-    pub fn try_from(package: Package) -> Option<Self> {
+    pub fn try_from(package: Package, debug: bool) -> Option<Self> {
         if package.version != 1 {
+            if debug {
+                println!(" < Version isn't 1")
+            }
+
             return None;
         }
 
         if package.data_len as usize != 3 * size_of::<i32>() {
+            if debug {
+                println!(
+                    " < Data length doesnt match ({} vs {})",
+                    package.data_len,
+                    3 * size_of::<i32>()
+                );
+            }
             return None;
         }
 
@@ -114,6 +155,9 @@ impl PackageV1 {
             sensor,
             value,
         };
+
+        println!(" > {res:?}");
+
         Some(res)
     }
 }

@@ -8,6 +8,6 @@ fuzz_target!(|data: &[u8]| {
 
     let res = spoofed.read_next_package();
     if let Some(ok) = res {
-        let _ = PackageV1::try_from(ok);
+        let _ = PackageV1::try_from(ok, false);
     }
 });
