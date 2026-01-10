@@ -1,0 +1,30 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: macos-latest
+
+    steps:
+      - name: Build (Intel)
+        run: cargo build --release --target x86_64-apple-darwin
+
+      - name: Build (Apple Silicon)
+        run: cargo build --release --target aarch64-apple-darwin
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-binaries
+          path: |
+            target/x86_64-apple-darwin/release/
+            target/aarch64-apple-darwin/release/
