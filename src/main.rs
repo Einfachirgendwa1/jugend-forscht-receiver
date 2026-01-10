@@ -1,19 +1,26 @@
 ﻿use clap::Parser;
-use package_parser::{DataReceiver, Package, PackageV1, SpoofedData, END, MAGIC};
+use package_parser::{DataReceiver, Package, PackageV1};
 use rusqlite::Connection;
+use serialport::new;
+use std::collections::VecDeque;
+use std::io::ErrorKind::TimedOut;
+use std::io::Read;
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 use std::thread::spawn;
+use std::time::Duration;
 
 #[derive(Parser)]
 struct Cli {
     database_path: String,
+    port: Option<String>,
+    baud_rate: Option<u32>,
 }
 
 fn main() {
-    let Cli { database_path } = Cli::parse();
+    let cli = Cli::parse();
 
-    let conn = Connection::open(database_path).expect("database connection failed");
+    let conn = Connection::open(&cli.database_path).expect("database connection failed");
 
     conn.execute_batch("PRAGMA journal_mode=WAL")
         .expect("failed to execute PRAGMA");
@@ -31,7 +38,7 @@ fn main() {
 
     let (tx, rx) = mpsc::channel();
 
-    for receiver in get_receivers() {
+    for receiver in get_receivers(cli) {
         let tx = tx.clone();
         spawn(move || read_from_stream(receiver, tx));
     }
@@ -48,16 +55,20 @@ fn main() {
     }
 }
 
-fn get_receivers() -> Vec<Box<dyn DataReceiver>> {
-    vec![Box::new(SpoofedData::from(&[
-        &MAGIC as &[u8],
-        &1i32.to_le_bytes(),
-        &12i32.to_le_bytes(),
-        &42i32.to_le_bytes(),
-        &17i32.to_le_bytes(),
-        &7i32.to_le_bytes(),
-        &END,
-    ]))]
+fn get_receivers(cli: Cli) -> Vec<Box<dyn DataReceiver>> {
+    let mut vec = vec![];
+
+    if let (Some(port), Some(baud_rate)) = (cli.port, cli.baud_rate) {
+        let wired_arduino = WiredArduino {
+            port,
+            baud_rate,
+            backlog: VecDeque::new(),
+        };
+
+        vec.push(Box::new(wired_arduino) as Box<dyn DataReceiver>);
+    }
+
+    vec
 }
 
 fn read_from_stream(mut receiver: Box<dyn DataReceiver>, tx: Sender<PackageV1>) {
@@ -72,5 +83,35 @@ fn read_from_stream(mut receiver: Box<dyn DataReceiver>, tx: Sender<PackageV1>) 
                     .expect("failed to send package via channel");
             }
         }
+    }
+}
+
+struct WiredArduino {
+    port: String,
+    baud_rate: u32,
+    backlog: VecDeque<u8>,
+}
+impl DataReceiver for WiredArduino {
+    fn get_next_byte(&mut self) -> Option<u8> {
+        let mut port = new(self.port.clone(), self.baud_rate)
+            .timeout(Duration::from_secs(1))
+            .open()
+            .expect("failed to open serial port");
+
+        loop {
+            let mut buffer = [0u8; 1024];
+
+            match port.read(&mut buffer) {
+                Ok(n) if n > 0 => {
+                    self.backlog = VecDeque::from(buffer[..n].to_vec());
+                    break;
+                }
+                Ok(_) => {}
+                Err(ref err) if err.kind() == TimedOut => {}
+                Err(err) => panic!("failed to read from port: {err}"),
+            }
+        }
+
+        self.backlog.pop_front()
     }
 }

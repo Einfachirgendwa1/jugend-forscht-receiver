@@ -7,3 +7,4 @@ edition = "2024"
 clap = { version = "4.5.54", features = ["derive"] }
 package-parser = { path = "package-parser" }
 rusqlite = { version = "0.38.0", features = ["bundled"] }
+serialport = "4.8.1"
