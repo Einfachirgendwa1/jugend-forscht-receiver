@@ -1,6 +1,7 @@
 ﻿#[cfg(test)]
 mod test_mod {
-    use crate::{DataReceiverExt, PackageV1, SpoofedData, END, MAGIC};
+    use crate::spoofed_data::SpoofedData;
+    use crate::{DataReceiverExt, PackageV1, END, MAGIC};
 
     #[test]
     fn basic() {
@@ -16,7 +17,7 @@ mod test_mod {
             &END,
             &394i32.to_le_bytes(),
             &3i32.to_le_bytes(),
-        ]);
+        ] as &[&[u8]]);
 
         let package = spoofed
             .read_next_package()
@@ -37,7 +38,7 @@ mod test_mod {
             &42i32.to_le_bytes(),
             &7i32.to_le_bytes(),
             &END as &[u8],
-        ]);
+        ] as &[&[u8]]);
 
         assert_eq!(spoofed.read_next_package(), None);
     }
@@ -50,7 +51,7 @@ mod test_mod {
             &8i32.to_le_bytes(),
             &42i32.to_le_bytes(),
             &7i32.to_le_bytes(),
-        ]);
+        ] as &[&[u8]]);
 
         assert_eq!(spoofed.read_next_package(), None);
     }
