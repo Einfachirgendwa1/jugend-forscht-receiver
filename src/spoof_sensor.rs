@@ -12,8 +12,12 @@ pub(crate) struct SpoofSensor {
 impl SpoofSensor {
     pub(crate) fn new(sensor: i32) -> Self {
         let mut time: i32 = 0;
+        let mut last_value = rng().random_range(0..200i32);
+
         let mut create_spoofed_data: Box<dyn FnMut() -> SpoofedData> = Box::new(move || {
             time += 1;
+            last_value += rng().random_range(-10..=10i32);
+            last_value = last_value.clamp(0, 200);
 
             SpoofedData::from(&[
                 &MAGIC as &[u8],
@@ -21,7 +25,7 @@ impl SpoofSensor {
                 &12i32.to_le_bytes(),
                 &time.to_le_bytes(),
                 &sensor.to_le_bytes(),
-                &rng().random_range(0..1000i32).to_le_bytes(),
+                &last_value.to_le_bytes(),
                 &END,
             ] as &[&[u8]])
         });
