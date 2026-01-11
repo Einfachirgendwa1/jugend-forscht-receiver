@@ -41,7 +41,7 @@ unsafe impl Send for SpoofSensor {}
 unsafe impl Sync for SpoofSensor {}
 impl DataReceiver for SpoofSensor {
     fn get_next_byte(&mut self) -> Option<u8> {
-        sleep(Duration::from_millis(50));
+        sleep(Duration::from_millis(10));
 
         if let x @ Some(_) = self.spoofed_data.get_next_byte() {
             return x;
