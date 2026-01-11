@@ -20,6 +20,9 @@ struct Cli {
 
     #[clap(long, action)]
     spoof: bool,
+
+    #[clap(long, action)]
+    reset_data: bool,
 }
 
 fn main() {
@@ -29,6 +32,11 @@ fn main() {
 
     conn.execute_batch("PRAGMA journal_mode=WAL")
         .expect("failed to execute PRAGMA");
+
+    if cli.reset_data {
+        conn.execute("DROP TABLE IF EXISTS data", [])
+            .expect("failed to drop table");
+    }
 
     conn.execute(
         "CREATE TABLE IF NOT EXISTS data (
