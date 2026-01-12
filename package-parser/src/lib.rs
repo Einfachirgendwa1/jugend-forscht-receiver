@@ -92,8 +92,6 @@ impl Package {
 
         assert_eq!(res.data_len as usize, res.data.len());
 
-        println!(" > {res:?}");
-
         Some(res)
     }
 }
@@ -121,8 +119,6 @@ impl PackageV1 {
             sensor,
             value,
         };
-
-        println!(" > {res:?}");
 
         Some(res)
     }
